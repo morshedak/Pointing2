@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تسجيل حضور العمال</title>
+    <!-- مكتبة html2pdf لتصدير PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #059669;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #0f172a;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 15px;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-pdf {
+            background-color: var(--secondary-color);
+            width: auto;
+            margin-top: 0;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f1f5f9;
+        }
+
+        .summary-card {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        @media print {
+            .no-print, form, .btn, .btn-danger {
+                display: none !important;
+            }
+            body {
+                background-color: #fff;
+                padding: 0;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="reportContent">
+    <h1>نظام تسجيل حضور العمال الشهري</h1>
+
+    <!-- نموذج الإدخال -->
+    <div class="card no-print">
+        <h2>تسجيل يومية جديدة</h2>
+        <form id="attendanceForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>التاريخ</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label>مكان العمل</label>
+                    <input type="text" id="location" placeholder="مثال: الموقع A" required>
+                </div>
+                <div class="form-group">
+                    <label>اسم العامل</label>
+                    <input type="text" id="workerName" placeholder="اسم العامل" required>
+                </div>
+                <div class="form-group">
+                    <label>حالة الحضور</label>
+                    <select id="status">
+                        <option value="1">حاضر (1 يوم)</option>
+                        <option value="0.5">نصف يوم (0.5)</option>
+                        <option value="0">غائب (0)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>العمل الإضافي</label>
+                    <select id="overtime">
+                        <option value="0">بدون إضافي</option>
+                        <option value="0.5">نصف يوم إضافي (+0.5)</option>
+                        <option value="1">يوم كامل إضافي (+1)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: span 1 / -1;">
+                    <label>ملاحظة (اختياري)</label>
+                    <input type="text" id="note" placeholder="أدخل أي ملاحظات إضافية هنا...">
+                </div>
+            </div>
+            <button type="submit" class="btn">حفظ السجل</button>
+        </form>
+    </div>
+
+    <!-- جدول المجموع الشهري لكل عامل -->
+    <div class="card summary-card" id="pdfSummarySection">
+        <div class="header-actions">
+            <h2 style="margin:0;">ملخص مجموع الأيام لكل عامل</h2>
+            <button class="btn btn-pdf no-print" onclick="exportToPDF()">تحميل ملخص PDF 📄</button>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>اسم العامل</th>
+                        <th>أيام الحضور الفعلي</th>
+                        <th>مجموع الإضافي</th>
+                        <th>الإجمالي الكلي المستحق (أيام)</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody">
+                    <!-- سيتم تعبئته تلقائياً -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- جدول السجلات اليومية التفصيلي -->
+    <div class="card">
+        <h2>سجل الحضور التفصيلي</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>التاريخ</th>
+                        <th>المكان</th>
+                        <th>اسم العامل</th>
+                        <th>الحضور</th>
+                        <th>الإضافي</th>
+                        <th>المجموع اليومي</th>
+                        <th>الملاحظات</th>
+                        <th class="no-print">إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                    <!-- سيتم تعبئته تلقائياً -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('date').valueAsDate = new Date();
+
+    let records = JSON.parse(localStorage.getItem('workerRecords')) || [];
+
+    const form = document.getElementById('attendanceForm');
+    const logsTableBody = document.getElementById('logsTableBody');
+    const summaryTableBody = document.getElementById('summaryTableBody');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const record = {
+            id: Date.now(),
+            date: document.getElementById('date').value,
+            location: document.getElementById('location').value,
+            name: document.getElementById('workerName').value.trim(),
+            status: parseFloat(document.getElementById('status').value),
+            overtime: parseFloat(document.getElementById('overtime').value),
+            note: document.getElementById('note').value.trim()
+        };
+
+        records.push(record);
+        saveAndRender();
+        form.reset();
+        document.getElementById('date').valueAsDate = new Date();
+    });
+
+    function deleteRecord(id) {
+        records = records.filter(r => r.id !== id);
+        saveAndRender();
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('workerRecords', JSON.stringify(records));
+        renderLogs();
+        renderSummary();
+    }
+
+    function renderLogs() {
+        logsTableBody.innerHTML = '';
+        records.forEach(r => {
+            const totalDay = r.status + r.overtime;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.date}</td>
+                <td>${r.location}</td>
+                <td>${r.name}</td>
+                <td>${r.status} يوم</td>
+                <td>${r.overtime > 0 ? r.overtime + ' يوم' : '-'}</td>
+                <td><strong>${totalDay} يوم</strong></td>
+                <td>${r.note ? r.note : '-'}</td>
+                <td class="no-print"><button class="btn btn-danger" onclick="deleteRecord(${r.id})">حذف</button></td>
+            `;
+            logsTableBody.appendChild(tr);
+        });
+    }
+
+    function renderSummary() {
+        summaryTableBody.innerHTML = '';
+        const summary = {};
+
+        records.forEach(r => {
+            if (!summary[r.name]) {
+                summary[r.name] = { workDays: 0, overtimeDays: 0 };
+            }
+            summary[r.name].workDays += r.status;
+            summary[r.name].overtimeDays += r.overtime;
+        });
+
+        for (const name in summary) {
+            const work = summary[name].workDays;
+            const overtime = summary[name].overtimeDays;
+            const total = work + overtime;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${name}</strong></td>
+                <td>${work} يوم</td>
+                <td>${overtime} يوم</td>
+                <td><mark style="padding: 2px 8px; border-radius: 4px; font-weight: bold; background:#bbf7d0; color:#166534;">${total} يوم</mark></td>
+            `;
+            summaryTableBody.appendChild(tr);
+        }
+    }
+
+    function exportToPDF() {
+        const element = document.getElementById('reportContent');
+        const noPrintElements = document.querySelectorAll('.no-print');
+        
+        noPrintElements.forEach(el => el.style.display = 'none');
+
+        const opt = {
+            margin:       10,
+            filename:     'ملخص_حضور_العمال_' + new Date().toISOString().slice(0,10) + '.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            noPrintElements.forEach(el => el.style.display = '');
+        });
+    }
+
+    renderLogs();
+    renderSummary();
+</script>
+
+</body>
+</html>
