@@ -206,6 +206,7 @@
                     <tr>
                         <th>اسم العامل</th>
                         <th>أيام الحضور الفعلي</th>
+                        <th>مجموع الغياب (أيام)</th>
                         <th>مجموع الإضافي</th>
                         <th>الإجمالي الكلي المستحق (أيام)</th>
                     </tr>
@@ -290,7 +291,7 @@
                 <td>${r.date}</td>
                 <td>${r.location}</td>
                 <td>${r.name}</td>
-                <td>${r.status} يوم</td>
+                <td>${r.status === 1 ? 'حاضر (1)' : r.status === 0.5 ? 'نصف يوم (0.5)' : 'غائب (0)'}</td>
                 <td>${r.overtime > 0 ? r.overtime + ' يوم' : '-'}</td>
                 <td><strong>${totalDay} يوم</strong></td>
                 <td>${r.note ? r.note : '-'}</td>
@@ -306,14 +307,16 @@
 
         records.forEach(r => {
             if (!summary[r.name]) {
-                summary[r.name] = { workDays: 0, overtimeDays: 0 };
+                summary[r.name] = { workDays: 0, overtimeDays: 0, absentDays: 0 };
             }
             summary[r.name].workDays += r.status;
             summary[r.name].overtimeDays += r.overtime;
+            summary[r.name].absentDays += (1 - r.status);
         });
 
         for (const name in summary) {
             const work = summary[name].workDays;
+            const absent = summary[name].absentDays;
             const overtime = summary[name].overtimeDays;
             const total = work + overtime;
 
@@ -321,6 +324,7 @@
             tr.innerHTML = `
                 <td><strong>${name}</strong></td>
                 <td>${work} يوم</td>
+                <td><span style="color: #dc2626; font-weight: bold;">${absent > 0 ? absent + ' يوم' : '0'}</span></td>
                 <td>${overtime} يوم</td>
                 <td><mark style="padding: 2px 8px; border-radius: 4px; font-weight: bold; background:#bbf7d0; color:#166534;">${total} يوم</mark></td>
             `;
